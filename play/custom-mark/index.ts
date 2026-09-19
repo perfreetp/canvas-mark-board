@@ -61,11 +61,11 @@ class MarkDotObject extends ClickMarkObject {
       regionCtx: ctx,
       t: { a: zoom },
     } = this.box;
-    if (!this.box.selectObject) {
-      this.box.clearCanvas(ctx);
-    }
+    this.box.clearRegionOnce();
     if (this.status === "edit") {
-      this.box.clearCanvas(ctx);
+      ctx.lineWidth = config.lineWidth! / zoom;
+      ctx.strokeStyle = this.color!;
+      ctx.stroke(new Path2D(this.pathData));
       ctx.fillStyle =
         this.status === "edit" ? config.fillColor : "rgba(0,0,0,0)";
       ctx.fill(new Path2D(this.pathData));
@@ -397,10 +397,13 @@ class MarkRotateRectObject extends MoveMarkObject {
   /** 导入 */
   static import(box: CanvasMarkBoard, data: any) {
     let obj = new this(box);
+    if (data.id) obj.id = data.id;
     obj.rotation = data.rotation || 0;
     obj.label = data.label;
+    obj.data = data?.data;
     obj.color = data.color || obj.color;
     obj.pointList = data.pointList;
+    obj.layerId = data.layerId || obj.layerId;
     obj.status = "done";
     obj.render();
     return obj;

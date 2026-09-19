@@ -7,6 +7,7 @@
 		"dev:demo": "pnpm run -C play/react-demo dev",
 		"dev:docs": "pnpm run -C docs/dev",
 		"build": "pnpm run -C  package/canvas-mark-board build",
+		"smoke": "node scripts/run-smoke.cjs",
 		"deploy:docs": "npx tsx scripts/docs-deploy"
 	},
 	"devDependencies": {

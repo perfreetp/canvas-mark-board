@@ -14,6 +14,7 @@ export default class MoveMarkObject extends MarkObject {
     this.minPointCount = 2;
     this.box = box;
     this.index = box.markObjectList.length + 1;
+    this.layerId = box.getActiveLayerIdForNew();
   }
 
   /** 鼠标按下 */
@@ -45,29 +46,39 @@ export default class MoveMarkObject extends MarkObject {
       this.render();
     }
     this.setCursor();
+    // 多选整体拖动由 board 统一处理，这里仅处理主选对象的顶点调整
     if (
       this.box.selectObject?.id === this.id &&
+      !this.box.groupDrag &&
       this.mouseDown &&
-      this.status == "edit"
+      this.status == "edit" &&
+      this.acctivePointIndex !== -1
     ) {
-      // 偏移量
       let offset = {
         x: this.box.lastPoint!.x - this.lastMousePoint!.x,
         y: this.box.lastPoint!.y - this.lastMousePoint!.y,
       };
-
-      if (this.acctivePointIndex == -1) {
-        // 更新点位
-        this.pointList = this.pointList.map((point) => {
-          return {
-            x: point.x + offset.x,
-            y: point.y + offset.y,
-          };
-        });
-      } else {
-        this.setMoveEdit(offset);
-      }
-      // 更新最后鼠标位置
+      this.setMoveEdit(offset);
+      this.lastMousePoint = this.box.lastPoint!;
+      this.render();
+    } else if (
+      this.box.selectObject?.id === this.id &&
+      !this.box.groupDrag &&
+      this.mouseDown &&
+      this.status == "edit" &&
+      this.acctivePointIndex === -1
+    ) {
+      // 单选拖动
+      let offset = {
+        x: this.box.lastPoint!.x - this.lastMousePoint!.x,
+        y: this.box.lastPoint!.y - this.lastMousePoint!.y,
+      };
+      this.pointList = this.pointList.map((point) => {
+        return {
+          x: point.x + offset.x,
+          y: point.y + offset.y,
+        };
+      });
       this.lastMousePoint = this.box.lastPoint!;
       this.render();
     } else if (this.status == "edit") {
@@ -159,6 +170,8 @@ export default class MoveMarkObject extends MarkObject {
     this.color = labelData?.color || this?.color;
 
     this.status = "done";
+    // 新对象落入历史
+    this.box.commitCreate(this);
     this.render();
     this.box.render();
     this.box.addObjectData();
@@ -197,9 +210,7 @@ export default class MoveMarkObject extends MarkObject {
       regionCtx: ctx,
       t: { a: zoom },
     } = this.box;
-    if (!this.box.selectObject) {
-      this.box.clearCanvas(ctx);
-    }
+    this.box.clearRegionOnce();
     // 线宽
     ctx.lineWidth = config.lineWidth! / zoom;
     ctx.strokeStyle = this.status === "draw" ? config.drawColor! : this.color!;
@@ -210,7 +221,6 @@ export default class MoveMarkObject extends MarkObject {
       ctx.stroke(path);
     }
     if (this.status === "edit") {
-      this.box.clearCanvas(ctx);
       ctx.stroke(path);
       ctx.fillStyle =
         this.status === "edit" ? config.fillColor : "rgba(0,0,0,0)";
@@ -248,10 +258,13 @@ export default class MoveMarkObject extends MarkObject {
   /** 导入 */
   static import(box: CanvasMarkBoard, data: IMarkObjectJSON) {
     let obj = new this(box);
+    if (data.id) obj.id = data.id;
     obj.label = data.label;
     obj.data = data?.data;
     obj.color = data.color || obj.color;
     obj.pointList = data.pointList;
+    obj.layerId = data.layerId || obj.layerId;
+    if (data.rotation !== undefined) obj.rotation = data.rotation;
     obj.status = "done";
     obj.render();
     return obj;

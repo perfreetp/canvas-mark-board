@@ -1,4 +1,5 @@
-import CanvasMarkBoard from "../index";
+import CanvasMarkBoard from "../board";
+import { DEFAULT_LAYER_ID } from "../types";
 import type {
   IPointData,
   IMarkObjectJSON,
@@ -23,6 +24,8 @@ interface MarkObject {
   pathData: string;
   indexPoint: IPointData;
   resultPoints?: IPointData[];
+  /** 顶点列表（用于点选/调整点） */
+  vertexList: IPointData[];
 }
 
 /**
@@ -47,6 +50,8 @@ class MarkObject implements MarkObject {
   color: string = "#ff0000";
   // 序号
   index: number = 1;
+  // 所属图层 ID
+  layerId: string = DEFAULT_LAYER_ID;
   // 父级容器
   box!: CanvasMarkBoard;
   // 容器事件ID
@@ -66,37 +71,60 @@ class MarkObject implements MarkObject {
   /**旋转信息 */
   rotation?: number = undefined;
 
+  /** 所属图层是否可见 */
+  get layerVisible(): boolean {
+    return this.box?.isLayerVisible(this.layerId) ?? true;
+  }
+
+  /** 所属图层是否可编辑（未锁定且可见） */
+  get layerEditable(): boolean {
+    return this.box?.isLayerEditable(this.layerId) ?? true;
+  }
+
+  /** 是否处于多选集合中 */
+  get isSelected(): boolean {
+    return !!this.box?.isSelected(this.id);
+  }
+
   /**
    * 设置选中状态
    * @param select
    */
   setSelect() {
-    // 清空已有选中
-    if (this.box.selectObject) {
-      this.box.selectObject.status = "done";
-      this.box.selectObject.render();
-      this.box.selectObject = undefined;
-    }
-        // 选中的最高层
-    if (this.status !== 'draw') {
-      this.status = 'edit';
-    }
-    this.box.selectObject = this;
-    this.render();
-    this.box.emit("onchange");
+    // 多选集合统一由 board 管理
+    this.box.setSelected([this.id]);
   }
-  
+
   setData(data: IObjectLabelData) {
     const { label, color } = data;
-    if (label) {
-      this.label = label;
-    }
-    if (color) {
-      this.color = color;
-    }
+    this.box.runHistory("修改标签", () => {
+      if (label !== undefined) {
+        this.label = label;
+      }
+      if (color !== undefined) {
+        this.color = color;
+      }
+    });
     this.render();
     this.box.render();
     this.box.emit("onchange");
+  }
+
+  /** 导出可序列化数据（基类通用实现，自定义图形可覆盖） */
+  export(): IMarkObjectJSON {
+    return {
+      id: this.id,
+      index: this.index,
+      label: this.label,
+      color: this.color,
+      type: this.type,
+      pointList: JSON.parse(JSON.stringify(this.resultPoints || this.pointList)),
+      layerId: this.layerId,
+      ...(this.rotation !== undefined ? { rotation: this.rotation } : {}),
+      ...(this.data !== undefined && this.data !== null
+        ? { data: this.data }
+        : {}),
+    };
   }
 }
 

@@ -9,7 +9,7 @@ import {
 import MarkObject from "./object";
 import type { IPointData, IObjectLabelData, IMarkObjectJSON } from "../types";
 /**
- * 标注对象 dian
+ * 点击绘制标注对象 ClickMarkObject（多边形/多线段等）
  */
 export default class ClickMarkObject extends MarkObject {
   lastPointDown?: IPointData;
@@ -23,10 +23,8 @@ export default class ClickMarkObject extends MarkObject {
     this.id = getUUID();
     this.box = box;
     this.index = box.markObjectList.length + 1;
+    this.layerId = box.getActiveLayerIdForNew();
     this.boxEventIds = [
-      // this.box.on_("onmousemove", this.boxMousemove, this),
-      // this.box.on_("onmousedown", this.boxMousedown, this),
-      // this.box.on_("onmouseup", this.boxMouseup, this),
       this.box.on_("oncontextmenu", this.boxContextmenu, this),
     ];
   }
@@ -76,31 +74,19 @@ export default class ClickMarkObject extends MarkObject {
         return;
       }
     }
-    if (this.mouseDown && this.status == "edit") {
+    // 多选/单选整体拖动由 board 统一处理，这里仅处理主选对象的顶点调整
+    if (
+      this.mouseDown &&
+      this.status == "edit" &&
+      !this.box.groupDrag &&
+      this.acctivePointIndex !== -1
+    ) {
       this.drag = true;
-      // 偏移量
-      let offset = {
-        x: this.box.lastPoint!.x - this.lastMousePoint!.x,
-        y: this.box.lastPoint!.y - this.lastMousePoint!.y,
+      // 更新点位
+      this.pointList[this.acctivePointIndex] = {
+        x: this.lastMousePoint!.x,
+        y: this.lastMousePoint!.y,
       };
-
-      if (this.acctivePointIndex == -1) {
-        // 更新点位
-        this.pointList = this.pointList.map((point) => {
-          return {
-            x: point.x + offset.x,
-            y: point.y + offset.y,
-          };
-        });
-      } else {
-        // 更新点位
-        this.pointList[this.acctivePointIndex] = {
-          x: this.lastMousePoint!.x,
-          y: this.lastMousePoint!.y,
-        };
-      }
-
-      // 更新最后鼠标位置
       this.lastMousePoint = this.box.lastPoint!;
     } else if (this.status == "edit") {
       this.acctivePointIndex = getMinDistance(
@@ -188,6 +174,8 @@ export default class ClickMarkObject extends MarkObject {
     this.color = labelData?.color || this?.color;
 
     this.status = "done";
+    // 新对象落入历史
+    this.box.commitCreate(this);
     this.render();
     this.box.render();
     this.box.addObjectData();
@@ -223,9 +211,7 @@ export default class ClickMarkObject extends MarkObject {
       regionCtx: ctx,
       t: { a: zoom },
     } = this.box;
-    if (!this.box.selectObject) {
-      this.box.clearCanvas(ctx);
-    }
+    this.box.clearRegionOnce();
     ctx.lineWidth = config.lineWidth! / zoom;
     ctx.strokeStyle = this.status === "draw" ? config.drawColor! : this.color!;
     if (this.status === "draw") {
@@ -255,7 +241,6 @@ export default class ClickMarkObject extends MarkObject {
     }
 
     if (this.status === "edit") {
-      this.box.clearCanvas(ctx);
       let drawPath = new Path2D(this.pathData);
       this.group.push(drawPath);
       ctx.stroke(drawPath);
@@ -293,10 +278,13 @@ export default class ClickMarkObject extends MarkObject {
   /** 导入 */
   static import(box: CanvasMarkBoard, data: IMarkObjectJSON) {
     let obj = new this(box);
+    if (data.id) obj.id = data.id;
     obj.label = data.label;
     obj.data = data?.data;
     obj.color = data.color || obj.color;
     obj.pointList = data.pointList;
+    obj.layerId = data.layerId || obj.layerId;
+    if (data.rotation !== undefined) obj.rotation = data.rotation;
     obj.status = "done";
     obj.render();
 

@@ -1,7 +1,9 @@
+import type MarkLayer from "../layer/Layer";
+
 /** 画布配置 */
 export interface IMarkBoardConfig {
   lineWidth?: number;
-  view: string;
+  view: string | HTMLElement;
   drawColor?: string;
   fillColor?: string;
   /** 基本用不到，删除 */
@@ -34,11 +36,15 @@ export interface IObjectCompleteHandle {
 
 export interface IMarkObjectJSON {
   data?: unknown;
-  index: number;
+  id?: string;
+  index?: number;
   label: string;
   color?: string;
   type: IMarkBoardDrawType;
   pointList: IPointData[];
+  /** 图层归属，未指定时归入默认图层 */
+  layerId?: string;
+  rotation?: number;
 }
 
 export interface IMarkObjectInfo {
@@ -47,6 +53,9 @@ export interface IMarkObjectInfo {
   select: boolean;
   pointList: IPointData[];
   type: IMarkBoardDrawType;
+  color?: string;
+  layerId?: string;
+  rotation?: number;
 }
 
 export type IMarkObjectId = string;
@@ -62,6 +71,42 @@ export interface IMatrixData {
   d: number;
   e: number;
   f: number;
+}
+
+/* ------------------------------ layer ------------------------------ */
+
+/** 默认图层 id */
+export const DEFAULT_LAYER_ID = "default";
+
+/** 图层数据（可序列化） */
+export interface ILayerJSON {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+  opacity: number;
+}
+
+export type ILayerData = Partial<Omit<ILayerJSON, "id">> & { id?: string };
+
+/* ----------------------------- history ----------------------------- */
+
+export interface IHistoryEntry {
+  label: string;
+  time: number;
+}
+
+export interface IHistorySnapshot {
+  layers: ILayerJSON[];
+  objects: IMarkObjectJSON[];
+}
+
+/* --------------------------- board export -------------------------- */
+
+/** 完整标注数据（图层 + 对象），同时兼容旧的纯对象数组 */
+export interface IMarkBoardJSON {
+  layers: ILayerJSON[];
+  objects: IMarkObjectJSON[];
 }
 
 export interface ICanvasMarkBoard extends IEventer {
@@ -137,3 +182,5 @@ export interface IEventListenerId {
   type: string;
   listener: IEventListener;
 }
+
+export type { MarkLayer };
