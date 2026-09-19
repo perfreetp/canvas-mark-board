@@ -65,12 +65,16 @@ class MarkObject implements MarkObject {
   acctivePointIndex: number = -1;
   /**旋转信息 */
   rotation?: number = undefined;
+  /** 所属图层ID */
+  layerId: string = "";
 
   /**
    * 设置选中状态
    * @param select
    */
   setSelect() {
+    // 隐藏或锁定的图层不参与选中
+    if (!this.box.isObjectInteractable(this)) return;
     // 清空已有选中
     if (this.box.selectObject) {
       this.box.selectObject.status = "done";
@@ -82,6 +86,7 @@ class MarkObject implements MarkObject {
       this.status = 'edit';
     }
     this.box.selectObject = this;
+    this.box.selectObjects = [this];
     this.render();
     this.box.emit("onchange");
   }

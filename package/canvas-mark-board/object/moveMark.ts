@@ -14,6 +14,7 @@ export default class MoveMarkObject extends MarkObject {
     this.minPointCount = 2;
     this.box = box;
     this.index = box.markObjectList.length + 1;
+    this.layerId = box.activeLayerId;
   }
 
   /** 鼠标按下 */
@@ -158,6 +159,8 @@ export default class MoveMarkObject extends MarkObject {
     this.label = labelData?.label || this?.label;
     this.color = labelData?.color || this?.color;
 
+    // 进入撤销历史（此刻对象仍为 draw 状态，不会包含进快照）
+    this.box.pushHistory();
     this.status = "done";
     this.render();
     this.box.render();
@@ -197,6 +200,8 @@ export default class MoveMarkObject extends MarkObject {
       regionCtx: ctx,
       t: { a: zoom },
     } = this.box;
+    // 隐藏图层不参与绘制
+    if (!this.box.isLayerVisible(this.layerId)) return;
     if (!this.box.selectObject) {
       this.box.clearCanvas(ctx);
     }

@@ -27,18 +27,49 @@ export interface IObjectLabelData {
   color?: string;
 }
 
+/** 图层 */
+export interface IMarkLayer {
+  /** 图层ID */
+  id: string;
+  /** 图层名称 */
+  name: string;
+  /** 是否可见 */
+  visible: boolean;
+  /** 是否锁定（锁定后不可选中、编辑） */
+  locked: boolean;
+  /** 透明度 0-1 */
+  opacity: number;
+}
+
+/** 历史快照 */
+export interface IHistorySnapshot {
+  objects: IMarkObjectJSON[];
+  layers: IMarkLayer[];
+  activeLayerId: string;
+}
+
+/** 画布导入导出数据 */
+export interface IMarkBoardData {
+  layers: IMarkLayer[];
+  objects: IMarkObjectJSON[];
+}
+
 export interface IObjectCompleteHandle {
   ok(labelData: IObjectLabelData): void;
   err(): void;
 }
 
 export interface IMarkObjectJSON {
+  id?: string;
   data?: unknown;
-  index: number;
+  index?: number;
   label: string;
   color?: string;
   type: IMarkBoardDrawType;
   pointList: IPointData[];
+  /** 所属图层ID */
+  layerId?: string;
+  rotation?: number;
 }
 
 export interface IMarkObjectInfo {
@@ -47,6 +78,8 @@ export interface IMarkObjectInfo {
   select: boolean;
   pointList: IPointData[];
   type: IMarkBoardDrawType;
+  /** 所属图层ID */
+  layerId?: string;
 }
 
 export type IMarkObjectId = string;
